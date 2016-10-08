@@ -28,19 +28,22 @@ ClientQueue::pop() {
     ClientObject c = client_queue.front();
     client_queue.pop();
     full.notify_one();
+    if (c.cache != "") {
+      client_queue.push(c);
+    }
+    // client_queue.push(c);
     return c;
 }
 
 int
 ClientQueue::size() {
-    // unique_lock<mutex> lock(m);
     int size = client_queue.size();
     return size;
 }
 
 bool
 ClientQueue::is_full() {
-  if (size() >= 200) {
+  if (size() >= 1000) {
     return true;
   }
   else {
@@ -53,23 +56,3 @@ ClientQueue::empty() {
   if (size() == 0) return true;
   else return false;
 }
-
-// void
-// ClientQueue::full_signal() {
-//   full.notify_one();
-// }
-//
-// void
-// ClientQueue::full_wait() {
-//   full.wait();
-// }
-//
-// void
-// ClientQueue::not_empty_signal() {
-//   not_empty.notify_one();
-// }
-//
-// void
-// ClientQueue::not_empty_wait() {
-//   not_empty.wait();
-// }

@@ -89,11 +89,7 @@ Server::serve() {
 
       // accept clients
     while ((client = accept(server_,(struct sockaddr *)&client_addr,&clientlen)) > 0) {
-        // while (queue.is_full()) {
-        //   queue.full_wait();
-        // }
         queue.push(ClientObject(client));
-        // queue.not_empty_signal();
     }
 
     close_socket();
@@ -147,7 +143,7 @@ Server::handle_put(int client, bool& success, string name, string subject, int l
   std::map<string, vector<Message> >:: iterator it;
   it = user_map.find(message.getName());
   if (it != user_map.end()) {
-    it->second.push_back(message);
+    user_map.push_back_message(it,message);
     success = send_response(client, "OK\n");
   }
   else {

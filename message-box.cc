@@ -7,6 +7,12 @@ MessageBox::~MessageBox() {}
 mutex
 MessageBox::m;
 
+void
+MessageBox::push_back_message(std::map<string, vector<Message> >:: iterator it, Message message) {
+  unique_lock<mutex> lock(m);
+  it->second.push_back(message);
+}
+
 std::map<string, vector<Message> >:: iterator
 MessageBox::find(string key) {
   unique_lock<mutex> lock(m);

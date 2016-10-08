@@ -16,10 +16,6 @@ public:
   int size();
   bool empty();
   bool is_full();
-  // void full_wait();
-  // void full_signal();
-  // void not_empty_wait();
-  // void not_empty_signal();
 
   static std::mutex m;
   static std::condition_variable full;

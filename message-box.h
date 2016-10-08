@@ -20,6 +20,7 @@ public:
   std::map<string, vector<Message> >:: iterator end();
   void insert(std::pair<std::string, vector<Message> >);
   void clear();
+  void push_back_message(std::map<string, vector<Message> >:: iterator, Message);
 
 private:
   map<std::string,std::vector<Message> > user_messages_map;
