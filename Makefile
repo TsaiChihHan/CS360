@@ -6,7 +6,7 @@ ECHO-SERVER=		echo-server.o server.o message.o message-box.o client_queue.o clie
 ECHO-CLIENT=		echo-client.o client.o command.o
 OBJS =			$(ECHO-SERVER) $(ECHO-CLIENT)
 
-LIBS=
+LIBS= -pthread -std=c++11
 
 CCFLAGS= -std=c++11 -g
 

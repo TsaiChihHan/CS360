@@ -4,6 +4,9 @@ MessageBox::MessageBox() {}
 
 MessageBox::~MessageBox() {}
 
+mutex
+MessageBox::m;
+
 std::map<string, vector<Message> >:: iterator
 MessageBox::find(string key) {
   unique_lock<mutex> lock(m);

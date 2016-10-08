@@ -31,6 +31,7 @@ public:
 private:
     void create();
     void close_socket();
+    void work();
     void serve();
     void handle(ClientObject);
     string get_request(int, string&);
@@ -45,7 +46,7 @@ private:
     void handle_list(int client, bool& success, string name);
     void handle_quit(int client, bool& success);
     void handle_reset(int client, bool& success);
-    void work();
+
 
     //Message parse_request(string request, string name);
 

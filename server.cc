@@ -66,6 +66,13 @@ Server::close_socket() {
 }
 
 void
+Server::work() {
+  while(1) {
+    handle(queue.pop());
+  }
+}
+
+void
 Server::serve() {
     // setup client
     int client;
@@ -77,31 +84,19 @@ Server::serve() {
 
     for (int i=0; i < 10; i++) {
         // create thread
-        threads.push_back(thread());
+        threads.push_back(thread(&Server::work, this));
     }
 
       // accept clients
     while ((client = accept(server_,(struct sockaddr *)&client_addr,&clientlen)) > 0) {
-        while (queue.is_full()) {
-          queue.full_wait();
-        }
+        // while (queue.is_full()) {
+        //   queue.full_wait();
+        // }
         queue.push(ClientObject(client));
-        queue.not_empty_signal();
+        // queue.not_empty_signal();
     }
 
     close_socket();
-}
-
-void
-Server::work() {
-  while(1) {
-    while(queue.empty()) {
-      queue.not_empty_wait();
-    }
-    ClientObject c = queue.pop();
-    handle(c);
-    queue.full_signal();
-  }
 }
 
 void

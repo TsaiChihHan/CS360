@@ -13,6 +13,9 @@ class MessageBox {
 public:
   MessageBox();
   ~MessageBox();
+
+  static std::mutex m;
+
   std::map<string, vector<Message> >:: iterator find(string);
   std::map<string, vector<Message> >:: iterator end();
   void insert(std::pair<std::string, vector<Message> >);
@@ -20,5 +23,4 @@ public:
 
 private:
   map<std::string,std::vector<Message> > user_messages_map;
-  static std::mutex m;
 };
