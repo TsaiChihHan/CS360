@@ -2,6 +2,8 @@
 
 #include <iostream>
 #include <string>
+#include <mutex>
+#include <condition_variable>
 
 using namespace std;
 
@@ -15,7 +17,8 @@ public:
   string getCache();
   void setCache(string);
 
+  string cache;
+
 private:
   int socket_num;
-  string cache;
-}
+};

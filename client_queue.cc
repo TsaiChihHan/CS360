@@ -5,23 +5,24 @@ ClientQueue::ClientQueue() {}
 ClientQueue::~ClientQueue() {}
 
 void
-ClientQueue::push_back(ClientObject c) {
+ClientQueue::push(ClientObject c) {
     unique_lock<mutex> lock(m);
-    queue.push_back(c);
+    client_queue.push(c);
     return;
 }
 
 ClientObject
-ClientQueue::pop_front() {
+ClientQueue::pop() {
     unique_lock<mutex> lock(m);
-    ClientObject c = queue.pop_front();
+    ClientObject c = client_queue.front();
+    client_queue.pop();
     return c;
 }
 
 int
 ClientQueue::size() {
     unique_lock<mutex> lock(m);
-    int size = queue.size();
+    int size = client_queue.size();
     return size;
 }
 
@@ -48,7 +49,7 @@ ClientQueue::full_signal() {
 
 void
 ClientQueue::full_wait() {
-  full.wait(&m);
+  full.wait();
 }
 
 void
@@ -58,5 +59,5 @@ ClientQueue::not_empty_signal() {
 
 void
 ClientQueue::not_empty_wait() {
-  not_empty.wait(&m);
+  not_empty.wait();
 }

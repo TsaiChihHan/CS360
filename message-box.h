@@ -2,6 +2,7 @@
 
 #include <map>
 #include <vector>
+#include <mutex>
 #include <string>
 #include "message.h"
 
@@ -16,8 +17,8 @@ public:
   std::map<string, vector<Message> >:: iterator end();
   void insert(std::pair<std::string, vector<Message> >);
   void clear();
-  
+
 private:
-  map<std::string,std::vector<Message> > map;
-  mutex m;
-}
+  map<std::string,std::vector<Message> > user_messages_map;
+  static std::mutex m;
+};

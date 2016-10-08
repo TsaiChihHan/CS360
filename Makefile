@@ -27,8 +27,8 @@ realclean:
 
 # These lines ensure that dependencies are handled automatically.
 %.d:	%.cc
-	$(SHELL) -ec '$(CC) -M $(CPPFLAGS) $< \
+	$(SHELL) -ec '$(CC) -M $(CCFLAGS) $< \
 		| sed '\''s/\($*\)\.o[ :]*/\1.o $@ : /g'\'' > $@; \
 		[ -s $@ ] || rm -f $@'
 
-include	$(OBJS:.o=.d)
+-include	$(OBJS:.o=.d)

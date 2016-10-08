@@ -10,15 +10,15 @@
 #include <unistd.h>
 #include <sstream>
 #include <iostream>
-#include "message-box.h"
-#include "client_queue.h"
 #include <vector>
 #include <map>
 #include <thread>
 #include <mutex>
 #include <condition_variable>
-
 #include <string>
+
+#include "message-box.h"
+#include "client_queue.h"
 
 using namespace std;
 
@@ -32,8 +32,8 @@ private:
     void create();
     void close_socket();
     void serve();
-    void handle(int);
-    string get_request(int);
+    void handle(ClientObject);
+    string get_request(int, string&);
     bool send_response(int, string);
     void get_value(int client, Message& message, string&);
     void parse_request(string request, string&);

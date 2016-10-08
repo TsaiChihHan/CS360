@@ -75,7 +75,7 @@ Server::serve() {
     // keep track of vectors
     vector<thread> threads;
 
-    for (int i=0; i<num_threads; i++) {
+    for (int i=0; i < 10; i++) {
         // create thread
         threads.push_back(thread());
     }
@@ -85,7 +85,7 @@ Server::serve() {
         while (queue.is_full()) {
           queue.full_wait();
         }
-        queue.push_back(ClientObject(client));
+        queue.push(ClientObject(client));
         queue.not_empty_signal();
     }
 
@@ -98,7 +98,8 @@ Server::work() {
     while(queue.empty()) {
       queue.not_empty_wait();
     }
-    handle(queue.pop_front());
+    ClientObject c = queue.pop();
+    handle(c);
     queue.full_signal();
   }
 }
@@ -224,20 +225,20 @@ Server::handle(ClientObject c) {
 
         bool success;
         // get a request
-        string request = get_request(c.getSocket(), c.getCache());
+        string request = get_request(c.getSocket(), c.cache);
 
         // break if client is done or an error occurred
         if (request.empty())
             break;
 
-        parse_request(client, success, request, c.getCache());
+        parse_request(c.getSocket(), success, request, c.cache);
 
         // break if an error occurred
         if (not success)
             break;
     }
 
-    close(client);
+    close(c.getSocket());
 }
 
 void Server::get_value(int client, Message& message, string& cache){
