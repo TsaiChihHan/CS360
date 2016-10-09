@@ -53,7 +53,8 @@ private:
     int port_;
     int server_;
     int buflen_;
-    char* buf_;
+    // char* buf_;
+
     string cache;
     MessageBox user_map;
     ClientQueue queue;

@@ -28,9 +28,9 @@ ClientQueue::pop() {
     ClientObject c = client_queue.front();
     client_queue.pop();
     full.notify_one();
-    if (c.cache != "") {
-      client_queue.push(c);
-    }
+    // if (c.cache != "") {
+    //   client_queue.push(c);
+    // }
     // client_queue.push(c);
     return c;
 }
@@ -43,7 +43,7 @@ ClientQueue::size() {
 
 bool
 ClientQueue::is_full() {
-  if (size() >= 1000) {
+  if (size() >= 20000) {
     return true;
   }
   else {

@@ -5,14 +5,12 @@ Server::Server(int port) {
     // setup variables
     port_ = port;
     buflen_ = 1024;
-    buf_ = new char[buflen_+1];
-    //message_list = vector<Message>();
-    //user_map = map<string, vector<Message> >();
-
+    // buf_ = new char[buflen_+1];
+    // char* buf_ = new char[buflen_+1];
 }
 
 Server::~Server() {
-    delete buf_;
+    // delete buf_;
 }
 
 void
@@ -68,7 +66,11 @@ Server::close_socket() {
 void
 Server::work() {
   while(1) {
-    handle(queue.pop());
+    ClientObject c = queue.pop();
+    handle(c);
+    // if (c.cache != "") {
+    //   queue.push(c);
+    // }
   }
 }
 
@@ -89,6 +91,7 @@ Server::serve() {
 
       // accept clients
     while ((client = accept(server_,(struct sockaddr *)&client_addr,&clientlen)) > 0) {
+        cout << "client => " << client << endl;
         queue.push(ClientObject(client));
     }
 
@@ -168,7 +171,7 @@ Server::handle_get(int client, bool& success, string name, int index) {
       return;
   }
   if (index > it->second.size() || index < 1){
-      cout << "7" << endl;
+      // cout << "7" << endl;
       send_response(client, "error can't find the message\n");
       return;
   }
@@ -228,11 +231,12 @@ Server::handle(ClientObject c) {
         if (not success)
             break;
     }
-
     close(c.getSocket());
+    cout << c.getSocket() << " closed" << endl;
 }
 
 void Server::get_value(int client, Message& message, string& cache){
+    char* buf_ = new char[buflen_+1];
     while(cache.size() < message.getLength()){
         int nread = recv(client,buf_,1024,0);
         if (nread < 0) {
@@ -244,14 +248,14 @@ void Server::get_value(int client, Message& message, string& cache){
                 return;
         } else if (nread == 0) {
             // the socket is closed
-            cout << "socket is close" << endl;
-            break;
+            cout << "socket is closed" << endl;
             return;
         }
         cache.append(buf_,nread);
     }
     message.setValue(cache);
     cache = "";
+    delete buf_;
 }
 
 
@@ -261,11 +265,14 @@ bool Server::handle_message(int client, Message message){
 
 string
 Server::get_request(int client, string& cache) {
+    char* buf_ = new char[buflen_+1];
     string request = "";
     // read until we get a newline
     while (request.find("\n") == string::npos) {
         memset(buf_,0,buflen_);
         int nread = recv(client,buf_,1024,0);
+        if (nread == 0)
+        cout << "socket " << client << " => nread:" << nread << endl;
         if (nread < 0) {
             if (errno == EINTR)
                 // the socket call was interrupted -- try again
@@ -274,7 +281,6 @@ Server::get_request(int client, string& cache) {
                 // an error occurred, so break out
                 return "";
         } else if (nread == 0) {
-            break;
             // the socket is closed
             return "";
         }
@@ -285,6 +291,7 @@ Server::get_request(int client, string& cache) {
     cache = request.substr(pos + 1);
     // a better server would cut off anything after the newline and
     // save it in a cache
+    delete buf_;
     return request.substr(0, pos);
 }
 
