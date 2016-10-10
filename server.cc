@@ -141,10 +141,9 @@ Server::handle_put(int client, bool& success, string name, string subject, int l
   }
   if (message.needed())
       get_value(client, message, cache);
-  std::map<string, vector<Message> >:: iterator it;
-  it = user_map.find(message.getName());
-  if (it != user_map.end()) {
-    user_map.push_back_message(it,message);
+
+  if (user_map.containsKey(message.getName())) {
+    user_map.push_back_message(message.getName(),message);
     success = send_response(client, "OK\n");
   }
   else {
@@ -164,40 +163,28 @@ Server::handle_get(int client, bool& success, string name, int index) {
   }
   std::map<string, vector<Message> >:: iterator it;
   it = user_map.find(name);
-  if (it == user_map.end()){
+  if (!user_map.containsKey(name)){
       send_response(client, "error can't find the person\n");
       return;
   }
-  if (index > it->second.size() || index < 1){
+  if (index > user_map[name].size() || index < 1){
       // cout << "7" << endl;
       send_response(client, "error can't find the message\n");
       return;
   }
-  stringstream ss;
-  ss << "message " << it->second[index-1].getSubject() << " " << it->second[index-1].getLength() << endl << it->second[index-1].getValue() ;
-  //cout << "\"" << iterator -> second[index-1].value <<"\"" << endl;
-  string temp = ss.str();
-  //cout << temp << endl;
-  send_response(client, temp);
+  send_response(client, user_map.get_message(name,index));
 }
 
 void
 Server::handle_list(int client, bool& success, string name) {
-  // stringstream ss;
   int count = 0;
 
-  std::map<string, vector<Message> >:: iterator it;
-  it = user_map.find(name);
-  if (it == user_map.end()){
+  if (!user_map.containsKey(name)) {
       send_response(client, "error can't find the person\n");
       return;
   }
 
-  // ss << "list " << it->second.size() << endl;
-  // for (int i = 0; i < it->second.size() ; i++){
-  //     ss << i+1 << " " << it->second[i].getSubject() << endl;
-  // }
-  success = send_response(client, user_map.list_messages(it));
+  success = send_response(client, user_map.list_messages(name));
 }
 
 void

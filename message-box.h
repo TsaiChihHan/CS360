@@ -21,9 +21,11 @@ public:
   std::map<string, vector<Message> >:: iterator end();
   void insert(std::pair<std::string, vector<Message> >);
   void clear();
-  void push_back_message(std::map<string, vector<Message> >:: iterator, Message);
+  void push_back_message(string, Message);
   bool containsKey(string);
-  string list_messages(std::map<string, vector<Message> >:: iterator);
+  string get_message(string,int);
+  string list_messages(string);
+  vector<Message> operator[](string);
 private:
   map<std::string,std::vector<Message> > user_messages_map;
 };
