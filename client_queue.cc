@@ -28,10 +28,6 @@ ClientQueue::pop() {
     ClientObject c = client_queue.front();
     client_queue.pop();
     full.notify_one();
-    // if (c.cache != "") {
-    //   client_queue.push(c);
-    // }
-    // client_queue.push(c);
     return c;
 }
 

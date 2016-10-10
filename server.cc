@@ -89,7 +89,6 @@ Server::serve() {
 
       // accept clients
     while ((client = accept(server_,(struct sockaddr *)&client_addr,&clientlen)) > 0) {
-        cout << "client => " << client << endl;
         queue.push(ClientObject(client));
     }
 
@@ -156,7 +155,6 @@ Server::handle_put(int client, bool& success, string name, string subject, int l
 
 void
 Server::handle_get(int client, bool& success, string name, int index) {
-  //cout << "Command: get" << endl;
   if (index == -1){
       send_response(client, "error \n");
       return;
@@ -168,7 +166,6 @@ Server::handle_get(int client, bool& success, string name, int index) {
       return;
   }
   if (index > user_map[name].size() || index < 1){
-      // cout << "7" << endl;
       send_response(client, "error can't find the message\n");
       return;
   }
@@ -218,7 +215,6 @@ Server::handle(ClientObject c) {
             return false;
     }
     close(c.getSocket());
-    cout << c.getSocket() << " closed" << endl;
     return true;
 }
 
@@ -235,7 +231,6 @@ void Server::get_value(int client, Message& message, string& cache){
                 return;
         } else if (nread == 0) {
             // the socket is closed
-            cout << "socket is closed" << endl;
             return;
         }
         cache.append(buf_,nread);
@@ -258,8 +253,6 @@ Server::get_request(int client, string& cache) {
     while (request.find("\n") == string::npos) {
         memset(buf_,0,buflen_);
         int nread = recv(client,buf_,1024,0);
-        if (nread == 0)
-        cout << "socket " << client << " => nread:" << nread << endl;
         if (nread < 0) {
             if (errno == EINTR)
                 // the socket call was interrupted -- try again
