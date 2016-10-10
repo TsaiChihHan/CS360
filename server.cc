@@ -67,10 +67,8 @@ void
 Server::work() {
   while(1) {
     ClientObject c = queue.pop();
-    handle(c);
-    // if (c.cache != "") {
-    //   queue.push(c);
-    // }
+    if(handle(c))
+      queue.push(c);
   }
 }
 
@@ -185,7 +183,7 @@ Server::handle_get(int client, bool& success, string name, int index) {
 
 void
 Server::handle_list(int client, bool& success, string name) {
-  stringstream ss;
+  // stringstream ss;
   int count = 0;
 
   std::map<string, vector<Message> >:: iterator it;
@@ -194,11 +192,12 @@ Server::handle_list(int client, bool& success, string name) {
       send_response(client, "error can't find the person\n");
       return;
   }
-  ss << "list " << it->second.size() << endl;
-  for (int i = 0; i < it->second.size() ; i++){
-      ss << i+1 << " " << it->second[i].getSubject() << endl;
-  }
-  success = send_response(client, ss.str());
+
+  // ss << "list " << it->second.size() << endl;
+  // for (int i = 0; i < it->second.size() ; i++){
+  //     ss << i+1 << " " << it->second[i].getSubject() << endl;
+  // }
+  success = send_response(client, user_map.list_messages(it));
 }
 
 void
@@ -212,7 +211,7 @@ Server::handle_reset(int client, bool& success) {
   success = send_response(client, "OK\n");
 }
 
-void
+bool
 Server::handle(ClientObject c) {
     // loop to handle all requests
     while (1) {
@@ -223,16 +222,17 @@ Server::handle(ClientObject c) {
 
         // break if client is done or an error occurred
         if (request.empty())
-            break;
+            return false;
 
         parse_request(c.getSocket(), success, request, c.cache);
 
         // break if an error occurred
         if (not success)
-            break;
+            return false;
     }
     close(c.getSocket());
     cout << c.getSocket() << " closed" << endl;
+    return true;
 }
 
 void Server::get_value(int client, Message& message, string& cache){
@@ -287,6 +287,7 @@ Server::get_request(int client, string& cache) {
         // be sure to use append in case we have binary data
         request.append(buf_,nread);
     }
+
     int pos = request.find("\n");
     cache = request.substr(pos + 1);
     // a better server would cut off anything after the newline and

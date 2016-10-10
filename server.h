@@ -33,7 +33,7 @@ private:
     void close_socket();
     void work();
     void serve();
-    void handle(ClientObject);
+    bool handle(ClientObject);
     string get_request(int, string&);
     bool send_response(int, string);
     void get_value(int client, Message& message, string&);

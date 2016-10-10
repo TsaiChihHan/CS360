@@ -4,8 +4,7 @@ MessageBox::MessageBox() {}
 
 MessageBox::~MessageBox() {}
 
-mutex
-MessageBox::m;
+mutex MessageBox::m;
 
 void
 MessageBox::push_back_message(std::map<string, vector<Message> >:: iterator it, Message message) {
@@ -37,4 +36,24 @@ void
 MessageBox::clear() {
   unique_lock<mutex> lock(m);
   user_messages_map.clear();
+}
+
+bool
+MessageBox::containsKey(string key) {
+  unique_lock<mutex> lock(m);
+  if (user_messages_map.find(key) != user_messages_map.end())
+    return true;
+  else
+    return false;
+}
+
+string
+MessageBox::list_messages(std::map<string, vector<Message> >:: iterator it) {
+  unique_lock<mutex> lock(m);
+  stringstream ss;
+  ss << "list " << it->second.size() << endl;
+  for (int i = 0; i < it->second.size() ; i++){
+      ss << i+1 << " " << it->second[i].getSubject() << endl;
+  }
+  return ss.str();
 }
