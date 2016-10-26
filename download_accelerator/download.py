@@ -35,58 +35,40 @@ class Downloader:
         content_length = int(r.headers['content-length'])
         print 'content_length: ' + str(content_length)
         threads = []
-        thread_range = content_length / self.num_thread
+        thread_range = content_length / self.num_thread + 1
         start = 0
         end = start + thread_range - 1
         for i in range(0,self.num_thread - 1):
-            header = {'Range': str(start)+'-'+str(end)}
+            header = {'Range': str(start)+'-'+str(end), 'Accept-Encoding': 'identity'}
             print header
-            d = DownThread(i,self.url)
+            d = DownThread(i,self.url, header)
             threads.append(d)
             start = end + 1
             end += thread_range
-        header = {'Range': str(start)+'-'+str(content_length-1)}
+        header = {'Range': str(start)+'-'+str(content_length-1), 'Accept-Encoding': 'identity'}
         print header
-        threads.append(DownThread(self.num_thread - 1,self.url))
-        # for t in threads:
-        #     t.start()
-        # for t in threads:
-        #     t.join()
-
-        # ''' download the files listed in the input file '''
-        # # setup URLs
-        # urls = []
-        # f = open(self.in_file,'r')
-        # for line in f.readlines():
-        #     urls.append(line.strip())
-        # f.close()
-        # # setup download locations
-        # files = [url.split('/')[-1].strip() for url in urls]
-        # # create a thread for each url
-        # threads = []
-        # for f,url in zip(files,urls):
-        #     filename = self.dir + '/' + f
-        #     d = DownThread(url,filename)
-        #     threads.append(d)
-        # for t in threads:
-        #     t.start()
-        # for t in threads:
-        #     t.join()
+        threads.append(DownThread(self.num_thread - 1,self.url, header))
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
 
 ''' Use a thread to download one file given by url and stored in filename'''
 class DownThread(threading.Thread):
-    def __init__(self,i,url):
+    def __init__(self,i,url,headers):
         self.id = i
         print 'Thread ' + str(self.id + 1)
         self.url = url
         threading.Thread.__init__(self)
         self._content_consumed = False
+        self.headers = headers
 
     def run(self):
         print 'Downloading %s' % self.url
-        r = requests.get(self.url, stream=True)
-        with open(self.filename, 'wb') as f:
-            f.write(r.content)
+        r = requests.get(self.url, headers=self.headers, stream=True)
+        print r.content
+        # with open(self.filename, 'wb') as f:
+        #     f.write(r.content)
 
 if __name__ == '__main__':
     d = Downloader()
