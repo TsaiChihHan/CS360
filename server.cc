@@ -67,8 +67,10 @@ void
 Server::work() {
   while(1) {
     ClientObject c = queue.pop();
-    if(handle(c))
-      queue.push(c);
+    // if(
+      handle(c);
+    // )
+      // queue.push(c);
   }
 }
 
