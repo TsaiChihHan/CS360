@@ -11,6 +11,7 @@ class Downloader:
         self.args = None
         self.in_file = 'urls.txt'
         self.dir = 'downloads'
+	self.num_thread = 1
         self.parse_arguments()
 
     def parse_arguments(self):
@@ -19,9 +20,11 @@ class Downloader:
         parser = argparse.ArgumentParser(prog='Mass downloader', description='A simple script that downloads multiple files from a list of URLs specified in a file', add_help=True)
         parser.add_argument('-i', '--input', type=str, action='store', help='Specify the input file containing a list of URLs, default is urls.txt',default='urls.txt')
         parser.add_argument('-d', '--dir', type=str, action='store', help='Specify the directory where downloads are stored, default is downloads',default='downloads')
-        args = parser.parse_args()
+        parser.add_argument('-n', '--num_thread', type=int, action='store', help='Specify the number of thread you want to create', default=1)
+	args = parser.parse_args()
         self.in_file = args.input
         self.dir = args.dir
+	self.num_thread = args.num_thread
         if not os.path.exists(self.dir):
             os.makedirs(self.dir)
 
