@@ -11,7 +11,7 @@ class Downloader:
         ''' initialize the file where the list of URLs is listed, and the
         directory where the downloads will be stored'''
         self.args = None
-        self.dir = 'downloads'
+        # self.dir = 'downloads'
         self.num_thread = 1
         self.parse_arguments()
 
@@ -19,15 +19,16 @@ class Downloader:
         ''' parse arguments, which include '-i' for input file and
         '-d' for download directory'''
         parser = argparse.ArgumentParser(prog='Mass downloader', description='A simple script that downloads multiple files from a list of URLs specified in a file', add_help=True)
-        parser.add_argument('-d', '--dir', type=str, action='store', help='Specify the directory where downloads are stored, default is downloads',default='downloads')
+        # parser.add_argument('-d', '--dir', type=str, action='store', help='Specify the directory where downloads are stored, default is downloads', default='')
         parser.add_argument('-n', '--num_thread', type=int, action='store', help='Specify the number of thread you want to create', default=1)
         parser.add_argument('url', type=str, action='store', help='Specify the URL')
         args = parser.parse_args()
-        self.dir = args.dir
+        # self.dir = args.dir
+        # print self.dir
         self.num_thread = args.num_thread
         self.url=args.url.strip()
-        if not os.path.exists(self.dir):
-            os.makedirs(self.dir)
+        # if not os.path.exists(self.dir):
+        #     os.makedirs(self.dir)
 
     def download(self):
         r = requests.head(self.url, headers={'Accept-Encoding': 'identity'})
@@ -54,7 +55,11 @@ class Downloader:
             content += t.join()
         end_time = time.clock()
         # print content
-        with open(self.dir+'/'+self.url.split('/')[-1].strip(), 'wb') as f:
+        file_name = self.url.split('/')[-1].strip()
+        if file_name == '':
+            file_name = 'index.html'
+
+        with open(file_name, 'wb') as f:
             f.write(content)
         print '%s %s %s %s' % (self.url,self.num_thread,content_length,end_time-start_time)
 
