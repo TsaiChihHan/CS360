@@ -64,3 +64,6 @@ nosetests.xml
 .mr.developer.cfg
 .project
 .pydevproject
+
+.zip
+.tgz
