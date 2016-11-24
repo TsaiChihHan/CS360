@@ -75,7 +75,9 @@ class DownThread(threading.Thread):
 
     def run(self):
         r = requests.get(self.url, headers= {'Range': 'bytes='+self.range, 'Accept-Encoding': 'identity'})
-        self.content = str(r.content)
+        print r
+	print r.headers
+	self.content = str(r.content)
 
     def join(self):
         threading.Thread.join(self)
