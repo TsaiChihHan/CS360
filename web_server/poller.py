@@ -7,6 +7,13 @@ import traceback
 from time import time, gmtime, strftime
 from http_parser.parser import HttpParser
 
+
+class Client:
+	def __init__(self, socket, cache, request_time):
+		self.cache = ""
+		self.socket = socket
+		self.request_time = request_time
+
 def get_time(t):
     gmt = gmtime(t)
     format = "%a, %d %b %Y %H:%M:%S GMT"
@@ -15,13 +22,20 @@ def get_time(t):
 
 class Poller:
     """ Polling server """
-    def __init__(self,port):
+    def __init__(self,port, debug):
         self.host = ""
         self.port = port
+        self.debug = debug
         self.open_socket()
         self.clients = {}
         self.size = 1024
-        self.cache = ""
+        self.timeout = 1
+
+        self.config = "web.conf"
+        self.hosts = {}
+        self.media = {}
+        self.parameters = {}
+        self.web_config()
 
     def open_socket(self):
         """ Setup the socket for incoming clients """
@@ -37,17 +51,46 @@ class Poller:
             print "Could not open socket: " + message
             sys.exit(1)
 
+    def web_config(self):
+        try:
+            f = open(self.config, 'r')
+        except (OSerror, IOError) as e:
+            print str(e)
+            sys.exit()
+        for line in f:
+            if len(line) > 1:
+                line = line.rstrip("\n").split(" ")
+                if line[0] == "host":
+                    self.hosts[line[1]] = line[2]
+                elif line[0] == "media":
+                    self.media[line[1]] = line[2]
+                elif line[0] == "parameter":
+                    self.parameters[line[1]] = line[2]
+                    if line[1] == "timeout":
+                        self.timeout = line[2]
+                else:
+                    if self.debug:
+                        print "invalid input in web.conf"
+        f.close()
+        if self.debug:
+            print "\nhosts: ", self.hosts
+            print "\nmedia:", self.media
+            print "\nparameters: ", self.parameters
+            print "\ntimeout: ", self.timeout
+
     def run(self):
         """ Use poll() to handle each incoming client."""
         self.poller = select.epoll()
         self.pollmask = select.EPOLLIN | select.EPOLLHUP | select.EPOLLERR
         self.poller.register(self.server,self.pollmask)
+
         while True:
             # poll sockets
             try:
                 fds = self.poller.poll(timeout=1)
             except:
                 return
+
             for (fd,event) in fds:
                 # handle errors
                 if event & (select.POLLHUP | select.POLLERR):
@@ -69,8 +112,8 @@ class Poller:
             self.poller.register(self.server,self.pollmask)
         else:
             # close the socket
-            self.clients[fd].close()
-            del self.clients[fd]
+            self.clients[fd].socket.close()
+            del self.clients[fd].socket
 
     def handleServer(self):
         # accept as many clients as possible
@@ -86,18 +129,13 @@ class Poller:
                 sys.exit()
             # set client socket to be non blocking
             client.setblocking(0)
-            self.clients[client.fileno()] = client
+            self.clients[client.fileno()] = Client(client,"",time())
             self.poller.register(client.fileno(),self.pollmask)
 
-    def get_time(self,t):
-        gmt = gmtime(t)
-        format = "%a, %d %b %Y %H:%M:%S GMT"
-        time_string = strftime(format, gmt)
-        return time_string
-
     def handleClient(self,fd):
+        cache = ""
         try:
-            data = self.clients[fd].recv(self.size)
+            data = self.clients[fd].socket.recv(self.size)
         except socket.error, (value,message):
             # if no data is available, move on to another client
             if value == errno.EAGAIN or errno.EWOULDBLOCK:
@@ -106,23 +144,24 @@ class Poller:
             sys.exit()
 
         if data:
-            print data
-            self.cache += data
-            print self.cache
-            if "\r\n\r\n" in self.cache:
+            self.clients[fd].cache += data
+            print self.clients[fd].cache
+            if "\r\n\r\n" in self.clients[fd].cache:
                 p = HttpParser()
-                p.execute(self.cache,len(self.cache))
+                p.execute(cache,len(self.clients[fd].cache))
 
                 # Get the date of the request
                 t = time()
+                if (p.get_errno() != 0):
 
 
                 # Check whether the method is GET
-                if p.get_method().upper() == "" or p.get_path() == "":
-                    print "400 Bad Request"
-                    self.clients[fd].send("HTTP/1.1 400 Bad Request\r\nDate: " + get_time(t) + "\r\nContent-Length: 234\r\nContent-Type: text/html\r\n\r\n<!DOCTYPE>\n<html><head>\n<title>400 Bad Request</title>\n<head><body>\n<h1>Bad Request</h1>\n<p>Your browser sent a request that this server could not understand.<br />\n</p>\n<hr>\n</body></html>\nConnection closed by foreign host.")
-                if p.get_method().upper() != "GET":
-                    self.clients[fd].send("HTTP/1.1 503 Not Implemented\r\nDate: " + get_time(t) + "\r\nContent-Length: 163\r\nContent-Type: text/html\r\n\r\n<!DOCTYPE>\n<html><head>\n<title>503 Not Implemented</title>\n<head><body>\n<h1>503 Not Implemented</h1>\n<hr>\n</body></html>\nConnection closed by foreign host.")
+                if p.get_method().upper() == "" or p.get_path() == "" or p.get_method().upper() != "GET":
+                    self.clients[fd].socket.send("HTTP/1.1 400 Bad Request\r\nDate: " + get_time(t) + "\r\nContent-Length: 234\r\nContent-Type: text/html\r\nServer: Appache\r\n\r\n<!DOCTYPE>\n<html><head>\n<title>400 Bad Request</title>\n<head><body>\n<h1>Bad Request</h1>\n<p>Your browser sent a request that this server could not understand.<br />\n</p>\n<hr>\n</body></html>\nConnection closed by foreign host.")
+                    print "400"
+                    return
+                # if p.get_method().upper() != "GET":
+                    # self.clients[fd].socket.send("HTTP/1.1 503 Not Implemented\r\nDate: " + get_time(t) + "\r\nContent-Length: 163\r\nContent-Type: text/html\r\nServer: Appaches\r\n\r\n<!DOCTYPE>\n<html><head>\n<title>503 Not Implemented</title>\n<head><body>\n<h1>503 Not Implemented</h1>\n<hr>\n</body></html>\nConnection closed by foreign host.")
                 path = ""
                 with open('web.conf', 'r') as f:
                     default_host = ""
@@ -144,16 +183,19 @@ class Poller:
                     open(path)
                 except IOError as (errno,strerror):
                     if errno == 13:
-                        self.clients[fd].send("HTTP/1.1 403 Forbidden\r\n" + "Date: " + get_time(t) + "\r\nContent-Length: 151\r\nContent-Type: text/html\r\n\r\n<!DOCTYPE>\n<html><head>\n<title>403 Forbidden</title>\n<head><body>\n<h1>403 Forbidden</h1>\n<hr>\n</body></html>\nConnection closed by foreign host.")
+                        self.clients[fd].socket.send("HTTP/1.1 403 Forbidden\r\n" + "Date: " + get_time(t) + "\r\nContent-Length: 151\r\nContent-Type: text/html\r\nServer: Appache\r\n\r\n<!DOCTYPE>\n<html><head>\n<title>403 Forbidden</title>\n<head><body>\n<h1>403 Forbidden</h1>\n<hr>\n</body></html>\nConnection closed by foreign host.")
+                        return
                     elif errno == 2:
-                        self.clients[fd].send("HTTP/1.1 404 Forbidden\r\n" + "Date: " + get_time(t) + "\r\nContent-Length: 151\r\nContent-Type: text/html\r\n\r\n<!DOCTYPE>\n<html><head>\n<title>404 Not Found</title>\n<head><body>\n<h1>404 Not Found</h1>\n<hr>\n</body></html>\nConnection closed by foreign host.")
+                        self.clients[fd].socket.send("HTTP/1.1 404 Forbidden\r\n" + "Date: " + get_time(t) + "\r\nContent-Length: 151\r\nContent-Type: text/html\r\nServer: Appache\r\n\r\n<!DOCTYPE>\n<html><head>\n<title>404 Not Found</title>\n<head><body>\n<h1>404 Not Found</h1>\n<hr>\n</body></html>\nConnection closed by foreign host.")
+                        return
                     else:
-                        self.clients[fd].send("HTTP/1.1 500 Internal Server Error\r\n" + "Date: " + get_time(t) + "\r\nContent-Length: 175\r\nContent-Type: text/html\r\n\r\n<!DOCTYPE>\n<html><head>\n<title>500 Internal Server Error</title>\n<head><body>\n<h1>500 Internal Server Error</h1>\n<hr>\n</body></html>\nConnection closed by foreign host.")
-                self.clients[fd].send("HTTP/1.1 200 Ok\r\nDate: %s\r\nLast-Modified: %s\r\nContent-Length: %d\r\nContent-Type: %s\r\nServer: %s\r\n\r\n%s" % (get_time(t),get_time(os.stat(path).st_mtime),os.stat(path).st_size, "text/html","Apache",open(path,"r").read()))
+                        self.clients[fd].socket.send("HTTP/1.1 500 Internal Server Error\r\n" + "Date: " + get_time(t) + "\r\nContent-Length: 175\r\nContent-Type: text/html\r\nServer: Appache\r\n\r\n<!DOCTYPE>\n<html><head>\n<title>500 Internal Server Error</title>\n<head><body>\n<h1>500 Internal Server Error</h1>\n<hr>\n</body></html>\nConnection closed by foreign host.")
+                        return
+                self.clients[fd].socket.send("HTTP/1.1 200 Ok\r\nDate: %s\r\nLast-Modified: %s\r\nContent-Length: %d\r\nContent-Type: %s\r\nServer: %s\r\n\r\n%s" % (get_time(t),get_time(os.stat(path).st_mtime),os.stat(path).st_size, "text/html","Apache",open(path,"r").read()))
             else:
-                self.clients[fd].send("incomplete\r\n")
+                self.clients[fd].socket.send("Incomplete\r\n")
 
         else:
             self.poller.unregister(fd)
-            self.clients[fd].close()
+            self.clients[fd].socket.close()
             del self.clients[fd]
