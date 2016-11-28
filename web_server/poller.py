@@ -2,8 +2,16 @@ import errno
 import select
 import socket
 import sys
+import os
 import traceback
+from time import time, gmtime, strftime
 from http_parser.parser import HttpParser
+
+def get_time(t):
+    gmt = gmtime(t)
+    format = "%a, %d %b %Y %H:%M:%S GMT"
+    time_string = strftime(format, gmt)
+    return time_string
 
 class Poller:
     """ Polling server """
@@ -81,11 +89,11 @@ class Poller:
             self.clients[client.fileno()] = client
             self.poller.register(client.fileno(),self.pollmask)
 
-    # def response(self, http_parser):
-    #     if http_parser.get_method().lower() == "get":
-    #         return "HTTP/1.1 200 ok\r\nContent-Type: text/html\r\nContent-Length: 0\r\n\r\n"
-    #     else:
-    #         return "HTTP/1.1 200 ok\r\nContent-Type: text/html\r\nContent-Length: 0\r\n\r\n"
+    def get_time(self,t):
+        gmt = gmtime(t)
+        format = "%a, %d %b %Y %H:%M:%S GMT"
+        time_string = strftime(format, gmt)
+        return time_string
 
     def handleClient(self,fd):
         try:
@@ -104,9 +112,44 @@ class Poller:
             if "\r\n\r\n" in self.cache:
                 p = HttpParser()
                 p.execute(self.cache,len(self.cache))
-                print p.get_method(),p.get_path(),p.get_headers()
-                self.cache = ""
-                self.clients[fd].send("HTTP/1.1 200 ok\r\nContent-Type: text/html\r\nContent-Length: 0\r\n\r\n")
+
+                # Get the date of the request
+                t = time()
+
+
+                # Check whether the method is GET
+                if p.get_method().upper() == "" or p.get_path() == "":
+                    print "400 Bad Request"
+                    self.clients[fd].send("HTTP/1.1 400 Bad Request\r\nDate: " + get_time(t) + "\r\nContent-Length: 234\r\nContent-Type: text/html\r\n\r\n<!DOCTYPE>\n<html><head>\n<title>400 Bad Request</title>\n<head><body>\n<h1>Bad Request</h1>\n<p>Your browser sent a request that this server could not understand.<br />\n</p>\n<hr>\n</body></html>\nConnection closed by foreign host.")
+                if p.get_method().upper() != "GET":
+                    self.clients[fd].send("HTTP/1.1 503 Not Implemented\r\nDate: " + get_time(t) + "\r\nContent-Length: 163\r\nContent-Type: text/html\r\n\r\n<!DOCTYPE>\n<html><head>\n<title>503 Not Implemented</title>\n<head><body>\n<h1>503 Not Implemented</h1>\n<hr>\n</body></html>\nConnection closed by foreign host.")
+                path = ""
+                with open('web.conf', 'r') as f:
+                    default_host = ""
+                    for line in f:
+                        fields = line.rstrip("\n").split(" ")
+                        if fields[0] == "host":
+                            if fields[1] == "default":
+                                default_host = fields[2]
+                            elif fields[1] == p.get_headers()['Host']:
+                                path = fields[2]
+                    if path == "":
+                        path = default_host
+                if p.get_path() == "/":
+                    path += "/index.html"
+                else:
+                    path += p.get_path()
+
+                try:
+                    open(path)
+                except IOError as (errno,strerror):
+                    if errno == 13:
+                        self.clients[fd].send("HTTP/1.1 403 Forbidden\r\n" + "Date: " + get_time(t) + "\r\nContent-Length: 151\r\nContent-Type: text/html\r\n\r\n<!DOCTYPE>\n<html><head>\n<title>403 Forbidden</title>\n<head><body>\n<h1>403 Forbidden</h1>\n<hr>\n</body></html>\nConnection closed by foreign host.")
+                    elif errno == 2:
+                        self.clients[fd].send("HTTP/1.1 404 Forbidden\r\n" + "Date: " + get_time(t) + "\r\nContent-Length: 151\r\nContent-Type: text/html\r\n\r\n<!DOCTYPE>\n<html><head>\n<title>404 Not Found</title>\n<head><body>\n<h1>404 Not Found</h1>\n<hr>\n</body></html>\nConnection closed by foreign host.")
+                    else:
+                        self.clients[fd].send("HTTP/1.1 500 Internal Server Error\r\n" + "Date: " + get_time(t) + "\r\nContent-Length: 175\r\nContent-Type: text/html\r\n\r\n<!DOCTYPE>\n<html><head>\n<title>500 Internal Server Error</title>\n<head><body>\n<h1>500 Internal Server Error</h1>\n<hr>\n</body></html>\nConnection closed by foreign host.")
+                self.clients[fd].send("HTTP/1.1 200 Ok\r\nDate: %s\r\nLast-Modified: %s\r\nContent-Length: %d\r\nContent-Type: %s\r\nServer: %s\r\n\r\n%s" % (get_time(t),get_time(os.stat(path).st_mtime),os.stat(path).st_size, "text/html","Apache",open(path,"r").read()))
             else:
                 self.clients[fd].send("incomplete\r\n")
 
