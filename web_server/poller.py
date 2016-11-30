@@ -132,13 +132,6 @@ class Poller:
 			client.setblocking(0)
 			self.clients[client.fileno()] = Client(client,"",time())
 			self.poller.register(client.fileno(),self.pollmask)
-
-	#def get_200(self,fd,entity_body,path, method):
-	#	headers = "HTTP/1.1 200 Ok\r\nDate: %s\r\nLast-Modified: %s\r\nContent-Length: %d\r\nContent-Type: %s\r\nServer: %s\r\n\r\n" %(get_time(self.clients[fd].request_time),get_time(os.stat(path).st_mtime),os.stat(path).st_size, self.media[path.split(".")[-1]],"Apache")
-	#	if method.upper() == "HEAD":
-	#		return headers
-	#	else:
-	#		return headers + entity_body
 	
 	def get_200(self,fd,entity_body, path, method):
 		headers = "HTTP/1.1 200 Ok\r\nDate: %s\r\nLast-Modified: %s\r\nContent-Length: %d\r\nContent-Type: %s\r\nServer: %s\r\n\r\n" %(get_time(self.clients[fd].request_time),get_time(os.stat(path).st_mtime),len(entity_body), self.media[path.split(".")[-1]],"Apache")
@@ -211,8 +204,10 @@ class Poller:
 					print traceback.format_exc()
 					sys.exit()
 			if data:
+				if self.debug:
+					print "data = ", data
 				self.clients[fd].cache += data
-				print self.clients[fd].cache
+				#print self.clients[fd].cache
 				if "\r\n\r\n" in self.clients[fd].cache:
 					p = HttpParser()
 					p.execute(self.clients[fd].cache,len(self.clients[fd].cache))
@@ -225,7 +220,7 @@ class Poller:
 						response = self.get_501(fd)
 
 					path = self.get_path(p)
-					print path
+					#print path
 					try:
 						f = open(path)
 					except IOError as (err,strerror):
@@ -242,7 +237,8 @@ class Poller:
 							response = self.get_206(fd, f.read(), path, range)
 						else:
 							response = self.get_200(fd, f.read(), path, p.get_method())
-					#print response
+					if self.debug:
+						print response
 					self.clients[fd].socket.send(response)
 					break
 				else:
