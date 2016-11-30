@@ -133,8 +133,24 @@ class Poller:
 			self.clients[client.fileno()] = Client(client,"",time())
 			self.poller.register(client.fileno(),self.pollmask)
 
-	def get_200(self,fd,entity_body,path):
-		headers = "HTTP/1.1 200 Ok\r\nDate: %s\r\nLast-Modified: %s\r\nContent-Length: %d\r\nContent-Type: %s\r\nServer: %s\r\n\r\n" %(get_time(self.clients[fd].request_time),get_time(os.stat(path).st_mtime),os.stat(path).st_size, self.media[path.split(".")[-1]],"Apache")
+	#def get_200(self,fd,entity_body,path, method):
+	#	headers = "HTTP/1.1 200 Ok\r\nDate: %s\r\nLast-Modified: %s\r\nContent-Length: %d\r\nContent-Type: %s\r\nServer: %s\r\n\r\n" %(get_time(self.clients[fd].request_time),get_time(os.stat(path).st_mtime),os.stat(path).st_size, self.media[path.split(".")[-1]],"Apache")
+	#	if method.upper() == "HEAD":
+	#		return headers
+	#	else:
+	#		return headers + entity_body
+	
+	def get_200(self,fd,entity_body, path, method):
+		headers = "HTTP/1.1 200 Ok\r\nDate: %s\r\nLast-Modified: %s\r\nContent-Length: %d\r\nContent-Type: %s\r\nServer: %s\r\n\r\n" %(get_time(self.clients[fd].request_time),get_time(os.stat(path).st_mtime),len(entity_body), self.media[path.split(".")[-1]],"Apache")
+		if method.upper() == "HEAD":
+			return headers
+		else:
+			return headers + entity_body
+	
+	def get_206(self,fd,entity_body,path, range):
+		range = range.split("=")[-1].split("-")
+		entity_body = entity_body[int(range[0]):int(range[-1])+1]
+		headers = "HTTP/1.1 206 Partial Content\r\nDate: %s\r\nLast-Modified: %s\r\nContent-Length: %d\r\nContent-Type: %s\r\nServer: %s\r\n\r\n" %(get_time(self.clients[fd].request_time),get_time(os.stat(path).st_mtime),len(entity_body.encode("utf8")), self.media[path.split(".")[-1]],"Apache")
 		return headers + entity_body
 
 	def get_400(self,fd):
@@ -161,7 +177,7 @@ class Poller:
 		entity_body = "<!DOCTYPE>\n<html><head>\n<title>503 Not Implemented</title>\n<head><body>\n<h1>503 Not Implemented</h1>\n<hr>\n</body></html>\nConnection closed by foreign host."
 		headers = "HTTP/1.1 501 Not Implemented\r\nDate: %s\r\nContent-Type: text/html\r\nContent-Length: %d\r\nServer: Appache\r\n\r\n" %(get_time(self.clients[fd].request_time),len(entity_body))
 		return headers + entity_body
-
+		
 	def get_path(self,parser):
 		path = ""
 		host = self.hosts.get(parser.get_headers().get('Host'))
@@ -191,8 +207,9 @@ class Poller:
 				# if no data is available, move on to another client
 				if value == errno.EAGAIN or errno.EWOULDBLOCK:
 					break
-				print traceback.format_exc()
-				sys.exit()
+				else:
+					print traceback.format_exc()
+					sys.exit()
 			if data:
 				self.clients[fd].cache += data
 				print self.clients[fd].cache
@@ -204,7 +221,7 @@ class Poller:
 
 					if p.get_errno() != 0:
 						response = self.get_400(fd)
-					elif p.get_method().upper() != "GET":
+					elif p.get_method().upper() != "GET" and p.get_method().upper() != "HEAD":
 						response = self.get_501(fd)
 
 					path = self.get_path(p)
@@ -220,12 +237,15 @@ class Poller:
 							if response == "":
 								response = self.get_500(fd)
 					if response == "":
-						response = self.get_200(fd, f.read(), path)
+						range = p.get_headers().get("Range")
+						if range:
+							response = self.get_206(fd, f.read(), path, range)
+						else:
+							response = self.get_200(fd, f.read(), path, p.get_method())
 					#print response
 					self.clients[fd].socket.send(response)
 					break
 				else:
-					print "Incomplete"
 					continue
 
 			else:
