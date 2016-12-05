@@ -12,7 +12,7 @@ class Client:
         self.server = None
         self.cache = ''
         self.messages = {}
-        self.size = 1024
+        self.size = 4096
         self.parse_options()
         self.open_socket()
         self.run()
@@ -81,7 +81,7 @@ class Client:
             except:
                 return False
             public_key = key.publickey()
-            data = public_key.encryp(self.get_user_message(),0)[0]
+            data = public_key.encrypt(self.get_user_message(),0)[0]
             self.send_put(name,subject,data)
             self.response_to_put()
             return True
@@ -101,8 +101,28 @@ class Client:
                 index = int(fields[2])
             except:
                 return False
+            self.send_get_key(name)
+            key = self.response_get_key()
+            if not key:
+                print "User not registered\n"
+                return False
             self.send_read(name,index)
-            self.response_to_read()
+            self.response_to_read(key)
+            return True
+        if fields[0] == 'peek':
+            ### peek message ###
+            try:
+                name = fields[1]
+                index = int(fields[2])
+            except:
+                return False
+            self.send_get_key(name)
+            key = self.response_get_key()
+            if not key:
+                print "User not registered\n"
+                return False
+            self.send_peek(name,index)
+            self.response_to_peek()
             return True
         if fields[0] == 'login':
             try:
@@ -193,7 +213,7 @@ class Client:
     def send_read(self,name,index):
         self.send_request("get %s %s\n" % (name, index))
 
-    def response_to_read(self):
+    def response_to_read(self,key):
         message = self.get_response()
         fields = message.split()
         try:
@@ -205,15 +225,32 @@ class Client:
         except:
             print "Server returned bad message:",message
             return
-        self.read_message_response(subject,length)
+        self.read_message_response(subject,length,key)
+
+    def send_peek(self,name,index):
+        self.send_request("get %s %s\n" % (name, index))
+
+    def response_to_peek(self):
+        message = self.get_response()
+        fields = message.split()
+        try:
+            if fields[0] != 'message':
+                print "Server returned bad message:",message
+                return
+            subject = fields[1]
+            length = int(fields[2])
+        except:
+            print "Server returned bad message:",message
+            return
+        self.peek_message_response(subject,length)
 
     def send_store_key(self,name):
-        randon_generator = Random.new().read
-        key = RSA.generate(2048, randon)
+        random_generator = Random.new().read
+        key = RSA.generate(2048, random_generator)
         export = key.exportKey()
-        self.send("store_key %s %d\n%s" %(name,len(expert),expert))
+        self.send_request("store_key %s %d\n%s" %(name,len(export),export))
 
-    def response_store_key(self):
+    def response_to_store_key(self):
         message = self.get_response()
         if message != "OK\n":
             #fields = message.split()
@@ -227,19 +264,21 @@ class Client:
 
     def response_get_key(self):
         message = self.get_response()
-        fields = message,split()
+        fields = message.split()
         try:
             if fields[0] != "key":
                 print "Server returned bad message:",message
                 return
             length = int(fields[1])
-            exportKey = fields[2][:length]
-            return RSA.importzkey(exportKey)
+            #print length
+            exportKey = self.cache
+            self.cache = ""
+            return RSA.importKey(exportKey)
         except:
             print "Server return bad messages:,",messsage
             return
 
-    def read_message_response(self,subject,length):
+    def read_message_response(self,subject,length,key):
         data = self.cache
         while len(data) < length:
             d = self.server.recv(self.size)
@@ -254,8 +293,25 @@ class Client:
         else:
             self.cache = ''
         print subject
-        print data,
+        print key.decrypt(data)
     
+    def peek_message_response(self,subject,length):
+        data = self.cache
+        while len(data) < length:
+            d = self.server.recv(self.size)
+            if not d:
+                self.cache = ''
+                print "Server did not send the whole message:",data
+                return None
+            data += d
+        if data > length:
+            self.cache = data[length:]
+            data = data[:length]
+        else:
+            self.cache = ''
+        print subject
+        print data
+        print "\n"
 
 if __name__ == '__main__':
     s = Client('',5000)

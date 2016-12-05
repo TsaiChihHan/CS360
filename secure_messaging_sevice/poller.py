@@ -53,7 +53,7 @@ class Poller:
                     continue
                 # handle client socket
                 result = self.handleClient(fd)
-            close_idle_socket()
+                #self.close_idle_socket()
 
     def handleError(self,fd):
         self.poller.unregister(fd)
@@ -74,7 +74,7 @@ class Poller:
                 (client,address) = self.server.accept()
             except socket.error, (value,message):
                 # if socket blocks because no clients are available,
-                # then return
+                # then 
                 if value == errno.EAGAIN or errno.EWOULDBLOCK:
                     return
                 print traceback.format_exc()
@@ -158,23 +158,23 @@ class Poller:
             response = "message %s %d\n" % (subject,len(data))
             response += data
             return response
-        if fields[0] = "store_key":
+        if fields[0] == "store_key":
             try:
                 name = fields[1]
-                length = int(fieldsp[2])
+                length = int(fields[2])
             except:
                 return('error invalid message\n')
-            key = read_put(length, fd)
+            key = self.read_put(length, fd)
             if key == None:
                 return 'error could not read entire message\n'
             self.store_key(name,key)
             return "OK\n"
-        if fields[0] = 'get_key':
+        if fields[0] == 'get_key':
             try:
                 name = fields[1]
             except:
                 return('error invalid message\n')
-            key = get_key(name)
+            key = self.get_key(name)
             if not key:
                 return "error no such user\n"
             response = "key %d\n%s" %(len(key),key)
@@ -212,10 +212,15 @@ class Poller:
     def read_put(self,length,fd):
         data = self.clients[fd].cache
         while len(data) < length:
-            d = self.client.recv(self.size)
-            if not d:
-                return None
-            data += d
+            try:
+                d = self.clients[fd].socket.recv(self.size)
+                if not d:
+                    return None
+                data += d
+            except socket.error, (value,message):
+            # if no data is available, move on to another client
+                if value == errno.EAGAIN or errno.EWOULDBLOCK:
+                    continue
         if len(data) > length:
             self.cache = data[length:]
             data = data[:length]
@@ -229,6 +234,6 @@ class Poller:
     def close_idle_socket(self):
         current_time = time()
         for fd in self.clients:
-            if current_time - self.clients[fd].request_time > 5
+            if current_time - self.clients[fd].request_time > 5:
                 self.clients[fd].socket.close()
                 del self.clients[fd]
